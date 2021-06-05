@@ -1,0 +1,68 @@
+- name: Config vm gogo
+  hosts: gogo_inventory
+  remote_user: azureuser
+  become: yes
+
+  tasks:
+
+  - name: Upgrade
+    apt:
+      upgrade: dist
+
+  - name: Update
+    apt:
+      update_cache: yes
+      cache_valid_time: 3600
+    
+  - name: Install packages
+    apt:
+      pkg:
+      - bash
+      - python-apt
+      - sudo
+  
+  - name: Add user 
+    ansible.builtin.user:
+      name: gogodev
+      shell: /bin/bash
+      groups: root,sudo
+      # created with:
+      # python
+      # import crypt
+      # crypt.crypt("This is my Password")
+      password: $6$KOXBGnfixyEBHBx0$c09Ki9ZjzMx7.cdmi9ojqwKDhR.Q5pc0.41Yrk3wwaxUbL1i0IpYfNPtmdBkkM0NHHUG7bfszwS8nE6BMy11X1
+      append: yes
+
+  - name: create ssh key for user gogodev
+    ansible.builtin.user:
+      name: gogodev
+      generate_ssh_key: yes
+      ssh_key_bits: 2048
+      ssh_key_file: .ssh/id_rsa
+
+  # - name: fetch ssh key
+  #   ansible.builtin.fetch:
+  #     src: /home/gogodev/.ssh/id_rsa.pub
+  #     dest: .ssh/
+  #     flat: yes
+
+  # - name: make direcotry
+  #   file:
+  #     path: "/home/gogodev/.ssh"
+  #     state: directory
+
+  - name: create empty file
+    file:
+      path: "/home/gogodev/.ssh/authorized_keys"
+      state: touch
+
+  - name: put ssh public key on authorized keys 
+    ansible.builtin.copy:
+      src: /home/adrianruizmora/.ssh/id_rsa.pub
+      dest: /home/gogodev/.ssh/authorized_keys
+
+  - name: create alias
+    ansible.builtin.copy:
+      src: .alias
+      dest: /home/gogodev/.bashrc
+    
