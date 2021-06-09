@@ -1,6 +1,6 @@
 # Remote server connection configuration
 - name: Config vm gogo
-  hosts: gogo_inventory # group in /etc/ansible/hosts (create if not exists)
+  hosts: gogo_inventory,proxy # group in /etc/ansible/hosts (create if not exists)
   remote_user: azureuser # user selected to connect (previously created with vm azure)
   become: yes # become root
 

@@ -1,0 +1,82 @@
+# Remote server connection configuration
+- name: Config vm2 gogo
+  hosts: proxy # group in /etc/ansible/hosts (create if not exists)
+  remote_user: azureuser # user selected to connect (previously created with vm azure)
+  become: yes # become root
+
+  tasks:
+    - name: Installing webserver (Nginx)
+      apt: name=nginx state=latest # installation of the latest version
+    - name: start nginx
+      service:
+        name: nginx
+        state: started # starting webserver
+    
+    - name: Creation of first private key
+      # Must install cryto extension with command : ansible-galaxy collection install community.crypto
+      community.crypto.openssl_privatekey:
+        path: /etc/ssl/private/private1.pem
+
+    - name: Generate an OpenSSL private key with the default values (4096 bits, RSA)
+      community.crypto.openssl_privatekey:
+        path: /etc/ssl/private/private2.pem
+
+    - name: Create acme account
+      community.crypto.acme_account:
+        account_key_src: /etc/ssl/private/private1.pem
+        state: present
+        terms_agreed: yes
+        acme_version: 2 # version 1 has been deprecated
+        acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory # web site to challenge 
+        contact:
+        - mailto:adrian@hotmail.com
+
+    - name: Generate an OpenSSL Certificate Signing Request
+      community.crypto.openssl_csr:
+        path: /etc/ssl/private/stage_certificate.csr
+        privatekey_path: /etc/ssl/private/private2.pem
+        common_name: ansible-dns.francecentral.cloudapp.azure.com
+
+    - name: Create a challenge using a account key file.
+      community.crypto.acme_certificate:
+        acme_directory: https://acme-staging-v02.api.letsencrypt.org/directory
+        acme_version: 2
+        account_key_src: /etc/ssl/private/private1.pem
+        csr: /etc/ssl/private/stage_certificate.csr
+        dest: /etc/httpd/ssl/end_certificate.crt
+        fullchain_dest: /etc/end_certificate-fullchain.crt
+        challenge: http-01 # challange type
+      register: challenge # challenge name
+
+    - name: "Create .well-known/acme-challenge directory"
+      file:
+        path: /var/www/html/.well-known/acme-challenge
+        state: directory
+        owner: root
+        group: root
+        mode: u=rwx,g=rx,o=rx
+
+    # - name: Create virtualhost directories
+    #   file:
+    #     path: /var/www/{{item}}/html
+    #     state: directory
+    #   with_items:
+    #     - lets_encrypt
+    #     - proxy
+    
+    # - name: Allow all access to tcp port 80
+    #   ufw:
+    #     rule: allow
+    #     port: '80'
+    #     proto: tcp
+    
+    # - name: Allow all access to tcp port 443
+    #   ufw:
+    #     rule: allow
+    #     port: '443'
+    #     proto: tcp
+    
+    # - name: ensure certbot is installed
+    #   package:
+    #     name: certbot
+    #     state: present
