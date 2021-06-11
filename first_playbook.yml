@@ -1,6 +1,6 @@
 # Remote server connection configuration
-- name: Config vm gogo
-  hosts: gogo_inventory,proxy # group in /etc/ansible/hosts (create if not exists)
+- name: Config vm adrian
+  hosts: adrianvm #,proxy # group in /etc/ansible/hosts (create if not exists)
   remote_user: azureuser # user selected to connect (previously created with vm azure)
   become: yes # become root
 
@@ -24,10 +24,14 @@
       - bash
       - python-apt
       - sudo
+      - git
+      - python-pip
+      - python3-pip
+      - libicu-dev
   
   - name: Add user 
     ansible.builtin.user:
-      name: gogodev
+      name: adrianruizmora
       shell: /bin/bash # run as default shell
       groups: root,sudo # adds user to root and sudo group
       # created with:
@@ -37,37 +41,54 @@
       password: $6$KOXBGnfixyEBHBx0$c09Ki9ZjzMx7.cdmi9ojqwKDhR.Q5pc0.41Yrk3wwaxUbL1i0IpYfNPtmdBkkM0NHHUG7bfszwS8nE6BMy11X1
       append: yes # if set to yes user groups are not overwritted 
 
-  - name: create ssh key for user gogodev
+  - name: create ssh key for user adrian
     ansible.builtin.user:
       # everything here is run on remote machine
-      name: gogodev
+      name: adrianruizmora
       generate_ssh_key: yes
       ssh_key_bits: 2048
       ssh_key_file: .ssh/id_rsa # if directory does not exists it will be created automatically
 
-  # - name: fetch ssh key
-  #   ansible.builtin.fetch:
-  #     src: /home/gogodev/.ssh/id_rsa.pub
-  #     dest: .ssh/
-  #     flat: yes
-
-  # - name: make direcotry
-  #   file:
-  #     path: "/home/gogodev/.ssh"
-  #     state: directory
-
   - name: create empty file
     file: # creates file "authorized_keys" on the given path 
-      path: "/home/gogodev/.ssh/authorized_keys"
+      path: "/home/adrianruizmora/.ssh/authorized_keys"
       state: touch
 
   - name: put ssh public key on authorized keys 
     ansible.builtin.copy:
       src: /home/adrianruizmora/.ssh/id_rsa.pub # copys content of public ssh key on local machine
-      dest: /home/gogodev/.ssh/authorized_keys # puts content authorized_keys file (overwrites content)
+      dest: /home/adrianruizmora/.ssh/authorized_keys # puts content authorized_keys file (overwrites content)
 
   - name: create alias
     ansible.builtin.copy:
       src: .alias # copys content on .alias file
-      dest: /home/gogodev/.bashrc # puts content on .bashrc file
+      dest: /home/adrianruizmora/.bashrc # puts content on .bashrc file
+
     
+    
+  # - name: Git clone libretranslate 
+  #   ansible.builtin.git:
+  #     repo: https://github.com/uav4geo/LibreTranslate
+  #     dest: /home/adrianruizmora/github/libretranslate
+  #     single_branch: yes
+  #     update: no
+  #     version: main
+  
+  # - name: Removing pyciu from requirements
+  #   ansible.builtin.shell: sed -ie '/pyicu/d' requirements.txt
+  #   args:
+  #     chdir: /home/adrianruizmora/github/libretranslate
+
+  # - name: Installing requirements
+  #   ansible.builtin.shell: pip install -r requirements.txt --no-cache-dir
+  #   args:
+  #     chdir: /home/adrianruizmora/github/libretranslate
+
+  # - name: Install PyICU
+  #   pip:
+  #     name: pyicu
+
+  # - name: Running app
+  #   ansible.builtin.shell: python main.py
+  #   args:
+  #     chdir: /home/adrianruizmora/github/libretranslate
